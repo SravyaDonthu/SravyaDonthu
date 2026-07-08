@@ -1,0 +1,395 @@
+Gen AI Terminology
+
+Vector embeddings are a way of representing data (text, images, audio, etc.) as lists of numbers (vectors) that capture meaning and relationships.
+
+For example:
+
+"king" and "queen" would have vectors very close to each other
+"king" and "banana" would be far apart
+
+Semantic search — Instead of matching keywords, you search by meaning. "car" and "automobile" return the same results even without exact matches.
+
+RAG (Retrieval-Augmented Generation) — Documents are embedded and stored in a vector database. When you ask a question, your query is embedded too, and the most semantically similar documents are retrieved and fed to the LLM.
+
+Recommendations — Find similar content, products, or users by comparing their embeddings.
+Classification & clustering — Group similar items without labeled data.
+
+FAISS (Facebook AI Similarity Search) is an open-source library built by Meta that enables fast and efficient searching through large collections of vector embeddings.
+The problem it solves:
+Imagine you have 10 million document embeddings (each a vector of 1024 numbers). When a query comes in, you need to find the most similar vectors. Comparing your query against every single vector one by one is way too slow — that's called brute-force search, and it doesn't scale.
+
+Key features:
+
+Handles billions of vectors
+Runs on CPU and GPU
+
+User Query
+    ↓
+Embed query (OpenAI / HuggingFace)
+    ↓
+Search FAISS index → Top-K similar vectors
+    ↓
+Retrieve matching documents
+    ↓
+Feed to LLM → Generate answer
+
+from langchain_community.embeddings import FakeEmbeddings
+Imports FakeEmbeddings — a dummy embedding model that generates random vectors instead of real semantic ones. Used here to avoid needing an OpenAI API key or internet connection.
+
+Most code is synchronous — it runs line by line, waiting for each thing to finish: http client
+
+Async lets you start something, move on, and come back when it's done:  -- httpx client
+------------------------------------------------------------------------------------------
+## Overall Flow for setup_kyc_db.py
+
+```
+SSL bypass setup
+      ↓
+Connect to TCS GenAI server (httpx, no SSL verify)
+      ↓
+Raw KYC text → Document object
+      ↓
+Split into chunks (≤500 chars)
+      ↓
+Send each chunk to TCS embedding API → real vectors
+      ↓
+Store in FAISS index
+      ↓
+Save to disk ("kyc_rules_db/")
+----------------------------------------------------------------------------------------------------------
+
+
+Imports create_react_agent — builds a ReAct agent (Reasoning + Acting). The agent thinks step-by-step and decides which tools to call automatically.
+
+Imports the @tool decorator — used to convert regular Python functions into LangChain-compatible tools that the agent can invoke.
+
+VISION_MODEL = "azure_ai/genailab-maas-Llama-3.2-90B-Vision-Instruct"
+A 90-billion parameter multimodal LLaMA model capable of understanding both text and images. Used to extract data from Aadhaar and PAN card images.
+
+REASONING_MODEL = "azure/genailab-maas-gpt-4o-mini"
+GPT-4o mini — a fast, capable text reasoning model. Used by the agent for decision-making and final KYC validation.
+
+pythonEMBEDDING_MODEL = "azure/genailab-maas-text-embedding-3-large"
+A large text embedding model that converts KYC rule text into high-dimensional vectors for semantic search.
+-----------------------------------------------------------------------------
+The @tool decorator registers this function as an agent tool. The docstring is critical — the agent reads it to decide when to call this tool. Internally just calls the logic function.
+
+agent_llm = ChatOpenAI(
+    model=REASONING_MODEL,
+    api_key=API_KEY,
+    base_url=BASE_URL,
+    temperature=0,
+    http_client=httpx.Client(verify=False)
+)
+Creates a LangChain chat LLM (GPT-4o mini via TCS) that will serve as the agent's brain — it reads tool descriptions and decides what to do next.
+--------------------------------------------------------------
+pythonagent = create_react_agent(agent_llm, tools)
+
+Builds the ReAct agent — an AI loop that:
+
+Reasons about what to do next
+Acts by calling a tool
+Observes the result
+Repeats until done
+
+----------------------------------------------------------------------
+
+Your Docs → Embed → Store in Vector DB
+                              ↓
+User Query → Embed → Search Vector DB → Top-K Docs → LLM → Answer
+RAG is the whole pipeline, not a specific tool.
+
+FAISS
+FAISS is a vector search library — it's one of the tools you can use inside a RAG pipeline. It handles the "search vector DB" step above.
+
+---------------------------------------------------------------------------------
+
+
+RAG Pipeline
+│
+├── Embedding Model  (OpenAI, HuggingFace)
+│
+├── Vector Store  ← FAISS or Pinecone or Chroma fits here
+│
+└── LLM  (GPT-4, Claude, etc.)
+
+Simple rule of thumb:
+
+Prototyping / local / small data → use FAISS
+Production / large scale / need filtering → use a proper vector DB like Pinecone or Chroma
+
+So in short: RAG is the recipe, FAISS/vector DBs are ingredients. You choose which ingredient fits your use case.
+
+-------------------------------------------------------------------------------
+except Exception as e:
+        st.warning(f"Could not parse JSON: {e}")
+        st.write(result["messages"][-1].content)
+```
+**Error handler** — if anything in the JSON parsing fails, shows a warning and falls back to displaying the raw agent output.
+
+---
+
+## Flow Diagram of KYC VALIDATOR (kyc_validation2_worked.py)
+```
+┌─────────────────────────────────────────────────────┐
+│                  STREAMLIT UI                       │
+│   Name / Aadhaar / PAN / Address  (text inputs)     │
+│   Aadhaar Image / PAN Image / Selfie (file upload)  │
+│                [Validate KYC Button]                │
+└──────────────────────┬──────────────────────────────┘
+                       │ On Button Click
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│              PRE-PROCESSING                         │
+│  • Encode Aadhaar image → Base64                    │
+│  • Encode PAN image → Base64                        │
+│  • Format user inputs into string                   │
+│  • Store all in _runtime_data{}                     │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│           ReAct AGENT (GPT-4o mini)                 │
+│                                                     │
+│  Agent reads: "Step 1, Step 2, Step 3..."           │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐    │
+│  │  THINK: What tool should I call first?      │    │
+│  └──────────────────┬──────────────────────────┘    │
+│                     │                               │
+│        ┌────────────▼─────────────┐                 │
+│        │   Tool: ExtractAadhaar   │                 │
+│        │  Sends Aadhaar image to  │                 │
+│        │  LLaMA Vision Model      │                 │
+│        │  Returns: JSON with      │                 │
+│        │  name, number, address   │                 │ 
+│        └────────────┬─────────────┘                 │
+│                     │                               │
+│        ┌────────────▼─────────────┐                 │
+│        │   Tool: ExtractPAN       │                 │
+│        │  Sends PAN image to      │                 │
+│        │  LLaMA Vision Model      │                 │
+│        │  Returns: JSON with      │                 │
+│        │  name, PAN number        │                 │
+│        └────────────┬─────────────┘                 │
+│                     │                               │
+│        ┌────────────▼─────────────┐                 │
+│        │   Tool: FinalValidation  │                 │
+│        │  • Fetches KYC rules     │                 │
+│        │    from FAISS (RAG)      │                 │
+│        │  • Builds prompt with    │                 │
+│        │    user + extracted data │                 │
+│        │  • Calls GPT-4o mini     │                 │
+│        │  • Returns JSON verdict  │                 │
+│        └────────────┬─────────────┘                 │
+│                     │                               │
+│  ┌──────────────────▼──────────────────────────┐    │
+│  │  FINAL ANSWER returned to Streamlit         │    │
+│  └─────────────────────────────────────────────┘    │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│              OUTPUT DISPLAY                         │
+│                                                     │
+│  Extract JSON from response                         │
+│  Render as st.json() widget:                        │
+│                                                     │
+│  {                                                  │
+│    "KYC_Status":    "APPROVED / REJECTED"           │
+│    "Name_Match":    "MATCH / MISMATCH"              │
+│    "Aadhaar_Match": "MATCH / MISMATCH"              │
+│    "PAN_Match":     "MATCH / MISMATCH"              │
+│    "Address_Match": "MATCH / MISMATCH"              │
+│    "Face_Match":    "MATCH / MISMATCH"              │
+│    "Reason":        "brief explanation"             │
+│  }                                                  │
+└─────────────────────────────────────────────────────┘
+```
+
+### Supporting Components Used by the Agent
+```
+FAISS Vector DB (kyc_rules_db/)          TCS GenAI Server
+        │                                       │
+        │  retriever.invoke()          ┌────────┴────────┐
+        │  "KYC validation rules"      │                 │
+        ▼                              ▼                 ▼
+  Returns relevant           LLaMA-3.2-90B        GPT-4o mini
+  rule text chunks           Vision Model         Reasoning Model
+  (RAG retrieval)            (image OCR)         (validation logic)
+  
+-------------------------------------------------------------------------------------------------------------------
+Hallucinations are when an AI model confidently generates information that is factually wrong, made up, or not grounded in any real source.
+
+Examples of hallucinations:
+
+Citing a research paper that doesn't exist
+Giving a wrong date, statistic, or name confidently
+Making up an API function that doesn't exist
+Answering a question about your private data from its own imagination
+
+The model isn't lying — it's just pattern-matching and filling gaps with plausible-sounding but wrong content.
+
+Why do they happen?
+LLMs are trained to predict the next most likely token. They don't actually know things — they approximate based on patterns. When they don't know something, instead of saying "I don't know", they generate something that sounds right.
+
+example of hallucinations(ref):
+
+1)when does India got independence - 1947
+2)Who is Mahatma Gandhi - A scientist 
+
+Techniques to avoid hallcuinations
++----------------------+----------------------------------+
+|      Technique       |           What it Fixes          |
++----------------------+----------------------------------+
+| RAG                  | Grounds answers in real docs     |
+| "Say I don't know"   | Reduces confident wrong answers  |
+| Temperature = 0      | Less random generation           |
+| Cite Sources         | Forces traceability              |
+| Tool Calling         | Replaces imagination with real   |
+|                      | data                             |
+| Self-Verification    | Catches errors before returning  |
+| Focused Context      | Reduces confusion                |
++----------------------+----------------------------------+
+
+-------------------------------------------------------------------------------------------
+
+MCP
+
+
+MCP = Model Context Protocol
+It's an open standard introduced by Anthropic that defines how AI agents/LLMs can connect to external tools, data sources, and services in a standardized way.
+
+The problem it solves:
+Before MCP, every time you wanted to connect an LLM to a tool (like GitHub, Slack, a database), you had to build a custom integration from scratch. Every tool was different, every connection was one-off.
+MCP says — let's have one standard way for AI to talk to any tool.
+
+Simple analogy:
+Think of MCP like USB-C.
+
+Before USB-C, every device had a different charger/port
+USB-C standardized it — one port works everywhere
+MCP does the same for AI ↔ Tool connections
+
+MCP Client = your AI agent/LLM app
+MCP Server = a wrapper around a tool that speaks MCP language
+Once a tool has an MCP server, any MCP-compatible AI can use it
+
+
+What MCP lets your agent do:
++----------------------+------------------------------+
+|      Capability      |           Example            |
++----------------------+------------------------------+
+| Read Files           | Access local filesystem      |
+| Search Web           | Brave Search, Google         |
+| Query Databases      | PostgreSQL, SQLite           |
+| Use APIs             | GitHub, Slack, Notion        |
+| Run Code             | Execute Python scripts       |
+| Memory               | Store and retrieve context   |
++----------------------+------------------------------+
+
+Without MCP:
+You build custom GitHub integration for your agent
+You build custom Slack integration for your agent
+You build custom DB integration for your agent
+→ 3 custom integrations, all different
+
+With MCP:
+GitHub MCP server exists → plug it in
+Slack MCP server exists  → plug it in
+DB MCP server exists     → plug it in
+→ same standard connection every time
+
+-----------------------------------------------------------------------------------------------------------
+
+Agentic AI and how does it differs from others and its features
+
+Agentic AI is an AI system that can autonomously plan, make decisions, take actions, and complete complex multi-step tasks on its own — without needing humans to guide every step.
+
+Simple Analogy:
+
+Regular AI = Calculator. You give input, it gives output. Done.
+Chatbot AI = Receptionist. Answers questions, has conversation.
+Agentic AI = Employee. You give a goal, it figures out HOW to achieve it, uses tools, makes decisions, and gets it done.
+
+
+How it differs from other AI types:
++------------------+------------------+--------------------+---------------------+
+|     Feature      |   Simple LLM     |   Chatbot Agent    |    Agentic AI       |
++------------------+------------------+--------------------+---------------------+
+| Input/Output     | One shot Q&A     | Multi-turn chat    | Goal-based          |
+| Memory           | None             | Short term only    | Long + Short term   |
+| Tool Use         | No               | Sometimes          | Yes, heavily        |
+| Planning         | No               | No                 | Yes, multi-step     |
+| Decision Making  | No               | Limited            | Yes, autonomous     |
+| Self Correction  | No               | No                 | Yes                 |
+| Human Needed     | Every step       | Every step         | Minimal             |
+| Example          | ChatGPT Q&A      | Customer support   | AutoGPT, Devin      |
++------------------+------------------+--------------------+---------------------+
+
+Core Components of Agentic AI:
++----------------------+--------------------------------------------------------+
+|      Component       |                    What it does                        |
++----------------------+--------------------------------------------------------+
+| LLM Brain            | Core reasoning and decision making engine              |
+| Memory               | Remembers past steps and context                       |
+| Tools                | Search, code exec, APIs, file system etc.              |
+| Planner              | Breaks big goal into smaller steps                     |
+| Executor             | Carries out each step one by one                       |
+| Self-Reflection      | Reviews its own output and corrects mistakes           |
++----------------------+--------------------------------------------------------+
+
+Advanced Features of Agentic AI:
++---------------------------+--------------------------------------------------+
+|        Feature            |                  What it means                   |
++---------------------------+--------------------------------------------------+
+| Autonomous Planning       | Breaks a goal into steps without human help     |
+| Tool Calling              | Uses search, APIs, code, DB on its own          |
+| Long Term Memory          | Remembers context across sessions               |
+| Self Reflection           | Checks and corrects its own mistakes            |
+| Multi Agent Collaboration | Multiple agents work together on one task       |
+| Dynamic Decision Making   | Changes plan based on new information           |
+| Parallel Task Execution   | Runs multiple subtasks simultaneously           |
+| Human in the Loop         | Pauses and asks human only when truly needed    |
+| RAG Integration           | Fetches real data before answering              |
+| Goal Persistence          | Keeps working until the goal is fully achieved  |
++---------------------------+--------------------------------------------------+
+
+Real World Example:
+You tell an Agentic AI:
+
+"Research the top 5 AI startups, summarize their products, and send me a report over email"
+
+It will:
+1. Plan  → break into steps
+2. Search web for top AI startups
+3. Read each website
+4. Summarize findings
+5. Draft email report
+6. Send email via API
+7. Report back to you — done
+No hand-holding at each step.
+
+Popular Agentic AI Frameworks:
++------------------+------------------------------------------+
+|    Framework     |              Known For                   |
++------------------+------------------------------------------+
+| LangChain        | Tool use, RAG, agent pipelines           |
+| LangGraph        | Multi-step, stateful agent graphs        |
+| AutoGPT          | Fully autonomous goal-driven agent       |
+| CrewAI           | Multi-agent collaboration                |
+| Microsoft AutoGen| Multi-agent conversations                |
+| Devin            | Autonomous software engineering agent   |
++------------------+------------------------------------------+
+
+In one line:
+
+Agentic AI = LLM + Memory + Tools + Planning + Autonomy — it doesn't just answer, it acts.
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+references 
+for terminology -- https://claude.ai/chat/9ee3eb2d-4483-4741-8219-3a20fd93ae01
+for KYC validator -- https://claude.ai/chat/c5451013-f38a-4702-9190-82dbf6d34c28
+
