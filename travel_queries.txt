@@ -7,3 +7,96 @@ I am staying in Hyd , and I would like to travel allepi , and experience back wa
 ok check the same plan for sep 11th to 14th, I can increase my budget to 20,000 u can suggest me trains also, and u can tell me what is the best plan to cover allepey and others in south kerela in minimum how many days and least possible buget if it is flight, u can tell me the comparsion between train and flight, by giving me the no of days and cost and other parameters I need to consider
 
 still only audio input box is coming at bottom , not the text input box, why?? , and why two boxes one for text and other for audio , u just place the mic symbol left to enter button in the text box ,
+-------------------------------------------------------------------------------------------------------------------
+## Travel Itinerary Optimizer with AI-Powered Recommendations
+
+### PROBLEM STATEMENT
+Travelers often spend considerable time planning complex itineraries involving flights, accommodations, and activities. Current platforms provide static options without personalized, context-aware recommendations to optimize time, cost, and preferences. Travel agents and customers face challenges in quickly assembling multi-leg trips that balance convenience and budget. The volume of searches and bookings is large, yet personalization remains limited. Existing solutions lack AI-driven natural language understanding and real-time integration with multiple service providers. This results in suboptimal travel plans, customer dissatisfaction, and lost revenue opportunities for agencies.
+
+### Data Considerations:
+Data sources include travel booking APIs for flights and accommodations, destination information databases, user preference profiles, and historical itinerary data. Data formats involve JSON and XML responses from APIs. Volume includes thousands of booking options updated in real-time. Preprocessing involves data normalization, availability filtering, and cost/time optimization heuristics. Privacy considerations include securing user travel preferences. Synthetic data can simulate diverse travel requests for testing.
+Consider using synthetic or anonymized data where appropriate. Ensure data quality and relevance to the problem context.
+
+### SOLUTION EXPECTATIONS
+Deliver a web app where users type or speak travel requirements and receive AI-generated optimized itineraries with detailed schedules and cost breakdowns. Features include interactive plan adjustments, alternative suggestions, and booking links integrated via APIs. Success metrics include 80%+ user satisfaction rating and reduced planning time by 40%. Demonstrate by generating itineraries for sample travel scenarios and showing modifications. Provide comprehensive user guide, technical documentation, and deployment instructions.
+Feel free to explore creative solutions that align with the problem context and objectives.
+--------------------------------------------------------------------------------------------------------------------------
+
+Text
+Images
+Audio
+Video
+Code
+Structured data
+Chatbots
+Code generation
+Document summarization
+Translation
+Question answering
+Zero-shot prompting
+One-shot prompting
+Few-shot prompting
+Chain-of-Thought prompting
+Role prompting
+Step-by-step prompting
+Embeddings
+Semantic search
+Similarity matching
+Recommendation systems
+Knowledge retrieval
+Chroma
+FAISS
+Pinecone
+Weaviate
+Milvus
+Document search
+Enterprise knowledge base
+Question answering
+Retrieval-Augmented Generation (RAG)
+LLMs can invoke external functions such as:
+Weather APIs
+Database queries
+Email services
+Payment gateways
+Hospital information systems
+
+
+ChromaDB/FAISS/Pinecone/Weaviate/Milvus
+RAG
+MCP
+Langchain
+Langgraph
+StreamlitUI
+Knowledge DB
+Speech to text
+documents upload
+OCR for scanned documents
+Docker deployment
+PDF or image upload
+AI Agents
+Chatbot
+Agentic model
+AI Agents: Autonomous task execution
+Function Calling: Integration with external tools and APIs
+Guardrails: Safety, compliance, and reliability mechanisms
+Fine-Tuning: Domain-specific model adaptation
+Multimodal AI: Processing text, images, audio, and video together
+
+--------------------------------------------------------------------------
+
+available models
+
+
+List of currently available Models 
+• azure/genailab-maas-gpt-35-turbo 
+• azure/genailab-maas-gpt-4o 
+• azure/genailab-maas-gpt-4o-mini 
+• azure/genailab-maas-text-embedding-3-large 
+• azure/genailab-maas-whisper 
+• azure_ai/genailab-maas-DeepSeek-R1 
+• azure_ai/genailab-maas-DeepSeek-V3-0324 
+• azure_ai/genailab-maas-Llama-3.2-90B-Vision-Instruct 
+• azure_ai/genailab-maas-Llama-3.3-70B-Instruct 
+• azure_ai/genailab-maas-Llama-4-Maverick-17B-128E-Instruct-FP8 
+• azure_ai/genailab-maas-Phi-3.5-vision-instruct 
+• azure_ai/genailab-maas-Phi-4-reasoning
